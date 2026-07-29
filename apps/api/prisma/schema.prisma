@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Channel {
+  id         String    @id @default(cuid())
+  telegramId BigInt    @unique
+  username   String?
+  title      String
+  createdAt  DateTime  @default(now())
+  messages   Message[]
+}
+
+model Message {
+  id                String   @id @default(cuid())
+  telegramMessageId Int
+  text              String
+  link              String?
+  publishedAt       DateTime
+  createdAt         DateTime @default(now())
+  channelId         String
+  channel           Channel  @relation(fields: [channelId], references: [id])
+
+  @@unique([telegramMessageId, channelId])
+}
