@@ -12,7 +12,9 @@ model Channel {
   telegramId BigInt    @unique
   username   String?
   title      String
+  active     Boolean   @default(true)
   createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   messages   Message[]
 }
 
@@ -21,10 +23,32 @@ model Message {
   telegramMessageId Int
   text              String
   link              String?
+  senderId          BigInt?
+  senderUsername    String?
   publishedAt       DateTime
   createdAt         DateTime @default(now())
   channelId         String
   channel           Channel  @relation(fields: [channelId], references: [id])
+  lead              Lead?
 
   @@unique([telegramMessageId, channelId])
+}
+
+model Lead {
+  id                String     @id @default(cuid())
+  messageId         String     @unique
+  message           Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  matchedKeywords   String[]
+  status            LeadStatus @default(NEW)
+  notifiedAt        DateTime?
+  notificationError String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+enum LeadStatus {
+  NEW
+  REVIEWED
+  CONTACTED
+  DISMISSED
 }

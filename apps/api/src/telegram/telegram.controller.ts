@@ -1,18 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { TelegramService } from './telegram.service';
 
 @Controller('telegram')
 export class TelegramController {
-  constructor(
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly telegramService: TelegramService) {}
 
-  @Get('login')
-  async login() {
-    await this.authService.login();
-
-    return {
-      success: true,
-    };
+  @Get('status')
+  status() {
+    return this.telegramService.getStatus();
   }
 }
