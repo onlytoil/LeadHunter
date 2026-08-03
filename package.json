@@ -1,17 +1,19 @@
 {
-  "name": "LeadHunter",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "leadhunter",
+  "private": true,
   "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "turbo format",
+    "db:generate": "pnpm --filter api prisma:generate",
+    "db:migrate": "pnpm --filter api prisma:migrate",
+    "telegram:login": "pnpm --filter api telegram:login"
+  },
   "devDependencies": {
     "turbo": "^2.10.6",
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.2"
   }
 }

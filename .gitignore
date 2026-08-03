@@ -1,15 +1,12 @@
 node_modules
-
-dist
-
 .next
-
-.env
-
-.env.local
-
+dist
 .turbo
-
+.env
+.env.local
 coverage
 
-*.log
+generated
+src/generated
+
+.prisma
