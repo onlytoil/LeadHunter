@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateKeywordRuleDto } from './dto/create-keyword-rule.dto';
+import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
 
 @Injectable()
 export class MonitoringSettingsService {
@@ -17,5 +19,25 @@ export class MonitoringSettingsService {
     ]);
 
     return { chats, keywordRules };
+  }
+
+  createChat(dto: CreateMonitoredChatDto) {
+    return this.prisma.monitoredChat.create({
+      data: {
+        identifier: dto.identifier,
+        title: dto.title,
+        active: dto.active,
+      },
+    });
+  }
+
+  createKeywordRule(dto: CreateKeywordRuleDto) {
+    return this.prisma.keywordRule.create({
+      data: {
+        phrase: dto.phrase,
+        type: dto.type,
+        active: dto.active,
+      },
+    });
   }
 }

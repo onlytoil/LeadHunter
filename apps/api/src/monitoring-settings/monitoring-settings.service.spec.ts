@@ -5,9 +5,11 @@ describe('MonitoringSettingsService', () => {
   const prisma = {
     monitoredChat: {
       findMany: jest.fn(),
+      create: jest.fn(),
     },
     keywordRule: {
       findMany: jest.fn(),
+      create: jest.fn(),
     },
   };
 
@@ -40,5 +42,39 @@ describe('MonitoringSettingsService', () => {
 
     expect(prisma.monitoredChat.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.keywordRule.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates a monitored chat', async () => {
+    const dto = {
+      identifier: '@example',
+      title: 'Example chat',
+      active: true,
+    };
+    const createdChat = { id: 'chat-1', ...dto };
+
+    prisma.monitoredChat.create.mockResolvedValue(createdChat);
+
+    await expect(service.createChat(dto)).resolves.toEqual(createdChat);
+
+    expect(prisma.monitoredChat.create).toHaveBeenCalledWith({
+      data: dto,
+    });
+  });
+
+  it('creates a keyword rule', async () => {
+    const dto = {
+      phrase: 'нужен сайт',
+      type: 'INCLUDE' as const,
+      active: true,
+    };
+    const createdRule = { id: 'rule-1', ...dto };
+
+    prisma.keywordRule.create.mockResolvedValue(createdRule);
+
+    await expect(service.createKeywordRule(dto)).resolves.toEqual(createdRule);
+
+    expect(prisma.keywordRule.create).toHaveBeenCalledWith({
+      data: dto,
+    });
   });
 });
