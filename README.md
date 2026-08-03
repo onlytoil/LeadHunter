@@ -23,7 +23,6 @@ Requirements: Node.js 24+, pnpm 10+, Git, and Docker Desktop.
 ```powershell
 git clone https://github.com/onlytoil/LeadHunter.git
 cd LeadHunter
-git switch feature/2-bootstrap-apps
 pnpm install
 Copy-Item .env.example .env
 docker compose up -d postgres
@@ -47,12 +46,28 @@ pnpm --filter api dev
    session into `TELEGRAM_SESSION`. Treat this session like a password.
 3. Create a notification bot with `@BotFather`, send the bot one message, and
    set `TELEGRAM_BOT_TOKEN` plus `TELEGRAM_NOTIFICATION_CHAT_ID`.
-4. Fill `TELEGRAM_CHATS`, `TELEGRAM_INCLUDE_KEYWORDS`, and
-   `TELEGRAM_EXCLUDE_KEYWORDS` with comma-separated values.
-5. Set `TELEGRAM_ENABLED=true`, then restart the API.
+4. Set `TELEGRAM_ENABLED=true`.
+5. Start the API and manage monitored chats plus include/exclude keyword
+   rules through the `/monitoring-settings` API.
+
+The active chat list is loaded when the API starts. Restart the API after
+adding, deleting, enabling, or disabling monitored chats.
 
 Never commit `.env`, `api_hash`, login codes, 2FA passwords, bot tokens, or the
 Telegram session string.
+
+## Monitoring settings API
+
+```text
+GET    /monitoring-settings
+POST   /monitoring-settings/chats
+POST   /monitoring-settings/keyword-rules
+PATCH  /monitoring-settings/chats/:id
+PATCH  /monitoring-settings/keyword-rules/:id
+PATCH  /monitoring-settings/chats/:id/active
+PATCH  /monitoring-settings/keyword-rules/:id/active
+DELETE /monitoring-settings/chats/:id
+DELETE /monitoring-settings/keyword-rules/:id
 
 ## Commands
 
