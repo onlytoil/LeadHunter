@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface LeadMatch {
   isLead: boolean;
@@ -9,22 +10,31 @@ export interface LeadMatch {
 
 @Injectable()
 export class ParserService {
-  private readonly keywords: string[];
-  private readonly stopWords: string[];
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(configService: ConfigService) {
-    this.keywords = this.parseList(
-      configService.get<string>('TELEGRAM_INCLUDE_KEYWORDS', ''),
-    );
-    this.stopWords = this.parseList(
-      configService.get<string>('TELEGRAM_EXCLUDE_KEYWORDS', ''),
-    );
-  }
+  async analyze(text: string): Promise<LeadMatch> {
+    const rules = await this.prisma.keywordRule.findMany({
+      where: { active: true },
+      select: {
+        phrase: true,
+        type: true,
+      },
+    });
 
-  analyze(text: string): LeadMatch {
+    const keywords = this.normalizePhrases(
+      rules
+        .filter((rule) => rule.type === 'INCLUDE')
+        .map((rule) => rule.phrase),
+    );
+    const stopWords = this.normalizePhrases(
+      rules
+        .filter((rule) => rule.type === 'EXCLUDE')
+        .map((rule) => rule.phrase),
+    );
+
     const normalizedText = this.normalize(text);
-    const matchedKeywords = this.findMatches(normalizedText, this.keywords);
-    const matchedStopWords = this.findMatches(normalizedText, this.stopWords);
+    const matchedKeywords = this.findMatches(normalizedText, keywords);
+    const matchedStopWords = this.findMatches(normalizedText, stopWords);
 
     return {
       isLead: matchedKeywords.length > 0 && matchedStopWords.length === 0,
@@ -33,13 +43,10 @@ export class ParserService {
     };
   }
 
-  private parseList(value: string): string[] {
+  private normalizePhrases(phrases: string[]): string[] {
     return [
       ...new Set(
-        value
-          .split(',')
-          .map((item) => this.normalize(item))
-          .filter(Boolean),
+        phrases.map((phrase) => this.normalize(phrase)).filter(Boolean),
       ),
     ];
   }

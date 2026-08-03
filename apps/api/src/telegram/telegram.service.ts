@@ -70,7 +70,7 @@ export class TelegramService implements OnModuleInit {
     ]);
     const chatInfo = this.getChatInfo(chat, chatId.toString());
     const senderInfo = this.getSenderInfo(sender);
-    const match = this.parserService.analyze(text);
+    const match = await this.parserService.analyze(text);
     const link = this.buildMessageLink(
       chatInfo.username,
       chatId.toString(),
