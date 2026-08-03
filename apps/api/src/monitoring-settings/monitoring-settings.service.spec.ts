@@ -7,11 +7,13 @@ describe('MonitoringSettingsService', () => {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     keywordRule: {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
   };
 
@@ -116,6 +118,41 @@ describe('MonitoringSettingsService', () => {
     expect(prisma.keywordRule.update).toHaveBeenCalledWith({
       where: { id: 'rule-1' },
       data: { active: false },
+    });
+  });
+
+  it('deletes a monitored chat', async () => {
+    const deletedChat = {
+      id: 'chat-1',
+      identifier: '@example',
+      active: false,
+    };
+
+    prisma.monitoredChat.delete.mockResolvedValue(deletedChat);
+
+    await expect(service.deleteChat('chat-1')).resolves.toEqual(deletedChat);
+
+    expect(prisma.monitoredChat.delete).toHaveBeenCalledWith({
+      where: { id: 'chat-1' },
+    });
+  });
+
+  it('deletes a keyword rule', async () => {
+    const deletedRule = {
+      id: 'rule-1',
+      phrase: 'нужен сайт',
+      type: 'INCLUDE',
+      active: false,
+    };
+
+    prisma.keywordRule.delete.mockResolvedValue(deletedRule);
+
+    await expect(service.deleteKeywordRule('rule-1')).resolves.toEqual(
+      deletedRule,
+    );
+
+    expect(prisma.keywordRule.delete).toHaveBeenCalledWith({
+      where: { id: 'rule-1' },
     });
   });
 });

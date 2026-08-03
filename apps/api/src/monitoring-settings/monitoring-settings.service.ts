@@ -55,4 +55,16 @@ export class MonitoringSettingsService {
       data: { active: dto.active },
     });
   }
+
+  deleteChat(id: string) {
+    return this.prisma.monitoredChat.delete({
+      where: { id },
+    });
+  }
+
+  deleteKeywordRule(id: string) {
+    return this.prisma.keywordRule.delete({
+      where: { id },
+    });
+  }
 }

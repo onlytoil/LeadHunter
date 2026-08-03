@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 
 import { CreateKeywordRuleDto } from './dto/create-keyword-rule.dto';
 import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
@@ -37,5 +45,15 @@ export class MonitoringSettingsController {
     @Body() dto: UpdateActiveDto,
   ) {
     return this.monitoringSettingsService.updateKeywordRuleActive(id, dto);
+  }
+
+  @Delete('chats/:id')
+  deleteChat(@Param('id') id: string) {
+    return this.monitoringSettingsService.deleteChat(id);
+  }
+
+  @Delete('keyword-rules/:id')
+  deleteKeywordRule(@Param('id') id: string) {
+    return this.monitoringSettingsService.deleteKeywordRule(id);
   }
 }
