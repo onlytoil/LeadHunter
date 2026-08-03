@@ -69,6 +69,11 @@ PATCH  /monitoring-settings/keyword-rules/:id/active
 DELETE /monitoring-settings/chats/:id
 DELETE /monitoring-settings/keyword-rules/:id
 
+```
+
+Chats and keyword rules are stored in PostgreSQL. Include and exclude matching
+is case-insensitive and supports Russian and English messages.
+
 ## Commands
 
 ```text
