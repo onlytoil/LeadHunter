@@ -12,6 +12,8 @@ import { CreateKeywordRuleDto } from './dto/create-keyword-rule.dto';
 import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
 import { MonitoringSettingsService } from './monitoring-settings.service';
 import { UpdateActiveDto } from './dto/update-active.dto';
+import { UpdateKeywordRuleDto } from './dto/update-keyword-rule.dto';
+import { UpdateMonitoredChatDto } from './dto/update-monitored-chat.dto';
 
 @Controller('monitoring-settings')
 export class MonitoringSettingsController {
@@ -32,6 +34,22 @@ export class MonitoringSettingsController {
   @Post('keyword-rules')
   createKeywordRule(@Body() dto: CreateKeywordRuleDto) {
     return this.monitoringSettingsService.createKeywordRule(dto);
+  }
+
+  @Patch('chats/:id')
+    updateChat(
+      @Param('id') id: string,
+      @Body() dto: UpdateMonitoredChatDto,
+    ) {
+      return this.monitoringSettingsService.updateChat(id, dto);
+  }
+
+  @Patch('keyword-rules/:id')
+    updateKeywordRule(
+      @Param('id') id: string,
+      @Body() dto: UpdateKeywordRuleDto,
+    ) {
+      return this.monitoringSettingsService.updateKeywordRule(id, dto);
   }
 
   @Patch('chats/:id/active')

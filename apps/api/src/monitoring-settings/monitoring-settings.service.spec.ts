@@ -121,6 +121,52 @@ describe('MonitoringSettingsService', () => {
     });
   });
 
+  it('updates a monitored chat', async () => {
+    const dto = {
+      identifier: '@updated_example',
+      title: 'Updated chat',
+    };
+    const updatedChat = {
+      id: 'chat-1',
+      ...dto,
+      active: true,
+    };
+
+    prisma.monitoredChat.update.mockResolvedValue(updatedChat);
+
+    await expect(service.updateChat('chat-1', dto)).resolves.toEqual(
+      updatedChat,
+    );
+
+    expect(prisma.monitoredChat.update).toHaveBeenCalledWith({
+      where: { id: 'chat-1' },
+      data: dto,
+    });
+  });
+
+  it('updates a keyword rule', async () => {
+    const dto = {
+      phrase: 'ищу разработчика',
+      type: 'EXCLUDE' as const,
+    };
+    const updatedRule = {
+      id: 'rule-1',
+      ...dto,
+      active: true,
+    };
+
+    prisma.keywordRule.update.mockResolvedValue(updatedRule);
+
+    await expect(service.updateKeywordRule('rule-1', dto)).resolves.toEqual(
+      updatedRule,
+    );
+
+    expect(prisma.keywordRule.update).toHaveBeenCalledWith({
+      where: { id: 'rule-1' },
+      data: dto,
+    });
+  });
+
   it('deletes a monitored chat', async () => {
     const deletedChat = {
       id: 'chat-1',

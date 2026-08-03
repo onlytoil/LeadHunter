@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateKeywordRuleDto } from './dto/create-keyword-rule.dto';
 import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
 import { UpdateActiveDto } from './dto/update-active.dto';
+import { UpdateKeywordRuleDto } from './dto/update-keyword-rule.dto';
+import { UpdateMonitoredChatDto } from './dto/update-monitored-chat.dto';
 
 @Injectable()
 export class MonitoringSettingsService {
@@ -53,6 +55,26 @@ export class MonitoringSettingsService {
     return this.prisma.keywordRule.update({
       where: { id },
       data: { active: dto.active },
+    });
+  }
+
+  updateChat(id: string, dto: UpdateMonitoredChatDto) {
+    return this.prisma.monitoredChat.update({
+      where: { id },
+      data: {
+        identifier: dto.identifier,
+        title: dto.title,
+      },
+    });
+  }
+
+  updateKeywordRule(id: string, dto: UpdateKeywordRuleDto) {
+    return this.prisma.keywordRule.update({
+      where: { id },
+      data: {
+        phrase: dto.phrase,
+        type: dto.type,
+      },
     });
   }
 
