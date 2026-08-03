@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateKeywordRuleDto } from './dto/create-keyword-rule.dto';
 import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
+import { UpdateActiveDto } from './dto/update-active.dto';
 
 @Injectable()
 export class MonitoringSettingsService {
@@ -38,6 +39,20 @@ export class MonitoringSettingsService {
         type: dto.type,
         active: dto.active,
       },
+    });
+  }
+
+  updateChatActive(id: string, dto: UpdateActiveDto) {
+    return this.prisma.monitoredChat.update({
+      where: { id },
+      data: { active: dto.active },
+    });
+  }
+
+  updateKeywordRuleActive(id: string, dto: UpdateActiveDto) {
+    return this.prisma.keywordRule.update({
+      where: { id },
+      data: { active: dto.active },
     });
   }
 }

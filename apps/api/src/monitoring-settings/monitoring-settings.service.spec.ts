@@ -6,10 +6,12 @@ describe('MonitoringSettingsService', () => {
     monitoredChat: {
       findMany: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     keywordRule: {
       findMany: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
   };
 
@@ -75,6 +77,45 @@ describe('MonitoringSettingsService', () => {
 
     expect(prisma.keywordRule.create).toHaveBeenCalledWith({
       data: dto,
+    });
+  });
+
+  it('updates monitored chat active state', async () => {
+    const updatedChat = {
+      id: 'chat-1',
+      identifier: '@example',
+      active: false,
+    };
+
+    prisma.monitoredChat.update.mockResolvedValue(updatedChat);
+
+    await expect(
+      service.updateChatActive('chat-1', { active: false }),
+    ).resolves.toEqual(updatedChat);
+
+    expect(prisma.monitoredChat.update).toHaveBeenCalledWith({
+      where: { id: 'chat-1' },
+      data: { active: false },
+    });
+  });
+
+  it('updates keyword rule active state', async () => {
+    const updatedRule = {
+      id: 'rule-1',
+      phrase: 'нужен сайт',
+      type: 'INCLUDE',
+      active: false,
+    };
+
+    prisma.keywordRule.update.mockResolvedValue(updatedRule);
+
+    await expect(
+      service.updateKeywordRuleActive('rule-1', { active: false }),
+    ).resolves.toEqual(updatedRule);
+
+    expect(prisma.keywordRule.update).toHaveBeenCalledWith({
+      where: { id: 'rule-1' },
+      data: { active: false },
     });
   });
 });
