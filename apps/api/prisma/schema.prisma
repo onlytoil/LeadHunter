@@ -53,3 +53,28 @@ enum LeadStatus {
   CONTACTED
   DISMISSED
 }
+
+model MonitoredChat {
+  id         String   @id @default(cuid())
+  identifier String   @unique
+  title      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model KeywordRule {
+  id        String          @id @default(cuid())
+  phrase    String
+  type      KeywordRuleType
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([type, phrase])
+}
+
+enum KeywordRuleType {
+  INCLUDE
+  EXCLUDE
+}

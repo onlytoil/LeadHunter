@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { validateEnvironment } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { MonitoringSettingsModule } from './monitoring-settings/monitoring-settings.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TelegramModule } from './telegram/telegram.module';
       validate: validateEnvironment,
     }),
     PrismaModule,
+    MonitoringSettingsModule,
     TelegramModule,
   ],
   controllers: [AppController],

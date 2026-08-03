@@ -29,9 +29,19 @@ export class TelegramService implements OnModuleInit {
       return;
     }
 
-    const chats = this.readList(
-      this.configService.getOrThrow<string>('TELEGRAM_CHATS'),
-    );
+    const monitoredChats = await this.prisma.monitoredChat.findMany({
+      where: { active: true },
+      select: { identifier: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const chats = monitoredChats.map((chat) => chat.identifier);
+
+    if (chats.length === 0) {
+      this.logger.warn('No active Telegram chats configured');
+      return;
+    }
+
     const client = this.clientService.getClient();
 
     await this.clientService.connect();
@@ -70,7 +80,7 @@ export class TelegramService implements OnModuleInit {
     ]);
     const chatInfo = this.getChatInfo(chat, chatId.toString());
     const senderInfo = this.getSenderInfo(sender);
-    const match = this.parserService.analyze(text);
+    const match = await this.parserService.analyze(text);
     const link = this.buildMessageLink(
       chatInfo.username,
       chatId.toString(),
@@ -193,12 +203,5 @@ export class TelegramService implements OnModuleInit {
     }
 
     return null;
-  }
-
-  private readList(value: string): string[] {
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
   }
 }
