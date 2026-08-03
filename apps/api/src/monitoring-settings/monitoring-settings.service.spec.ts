@@ -1,3 +1,6 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { MonitoringSettingsService } from './monitoring-settings.service';
 
@@ -24,6 +27,12 @@ describe('MonitoringSettingsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
+  const createPrismaError = (code: string) =>
+    new Prisma.PrismaClientKnownRequestError('Prisma request failed', {
+      code,
+      clientVersion: '7.9.0',
+    });
 
   it('returns monitored chats and keyword rules', async () => {
     const chats = [{ id: 'chat-1', identifier: '@example', active: true }];
@@ -200,5 +209,45 @@ describe('MonitoringSettingsService', () => {
     expect(prisma.keywordRule.delete).toHaveBeenCalledWith({
       where: { id: 'rule-1' },
     });
+  });
+
+  it('returns conflict when a monitored chat already exists', async () => {
+    prisma.monitoredChat.create.mockRejectedValue(createPrismaError('P2002'));
+
+    await expect(
+      service.createChat({
+        identifier: '@example',
+        title: 'Example chat',
+        active: true,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('returns conflict when a keyword rule already exists', async () => {
+    prisma.keywordRule.create.mockRejectedValue(createPrismaError('P2002'));
+
+    await expect(
+      service.createKeywordRule({
+        phrase: 'нужен сайт',
+        type: 'INCLUDE',
+        active: true,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('returns not found when a monitored chat does not exist', async () => {
+    prisma.monitoredChat.update.mockRejectedValue(createPrismaError('P2025'));
+
+    await expect(
+      service.updateChatActive('missing-chat', { active: false }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('returns not found when a keyword rule does not exist', async () => {
+    prisma.keywordRule.delete.mockRejectedValue(createPrismaError('P2025'));
+
+    await expect(
+      service.deleteKeywordRule('missing-rule'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
