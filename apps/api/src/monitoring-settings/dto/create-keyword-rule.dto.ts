@@ -9,9 +9,10 @@ import {
 } from 'class-validator';
 
 export class CreateKeywordRuleDto {
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(({ value }) => {
+    const input: unknown = value;
+    return typeof input === 'string' ? input.trim() : input;
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)

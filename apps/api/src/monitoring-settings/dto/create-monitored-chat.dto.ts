@@ -8,20 +8,20 @@ import {
 } from 'class-validator';
 
 export class CreateMonitoredChatDto {
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(({ value }) => {
+    const input: unknown = value;
+
+    return typeof input === 'string' ? input.trim() : input;
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   identifier!: string;
 
   @Transform(({ value }) => {
-    if (typeof value !== 'string') {
-      return value;
-    }
+    const input: unknown = value;
 
-    return value.trim() || undefined;
+    return typeof input === 'string' ? input.trim() || undefined : input;
   })
   @IsOptional()
   @IsString()

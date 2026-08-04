@@ -1,15 +1,12 @@
 import { Transform } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateMonitoredChatDto {
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(({ value }) => {
+    const input: unknown = value;
+
+    return typeof input === 'string' ? input.trim() || undefined : input;
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -17,11 +14,9 @@ export class UpdateMonitoredChatDto {
   identifier?: string;
 
   @Transform(({ value }) => {
-    if (typeof value !== 'string') {
-      return value;
-    }
+    const input: unknown = value;
 
-    return value.trim() || null;
+    return typeof input === 'string' ? input.trim() || undefined : input;
   })
   @IsOptional()
   @IsString()

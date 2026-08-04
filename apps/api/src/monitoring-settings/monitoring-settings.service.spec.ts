@@ -3,6 +3,7 @@ import { Prisma } from '../generated/prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { MonitoringSettingsService } from './monitoring-settings.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 describe('MonitoringSettingsService', () => {
   const prisma = {
@@ -20,8 +21,13 @@ describe('MonitoringSettingsService', () => {
     },
   };
 
+  const telegramService = {
+    refreshMonitoredChats: jest.fn(),
+  };
+
   const service = new MonitoringSettingsService(
     prisma as unknown as PrismaService,
+    telegramService as unknown as TelegramService,
   );
 
   beforeEach(() => {

@@ -37,19 +37,16 @@ export class MonitoringSettingsController {
   }
 
   @Patch('chats/:id')
-    updateChat(
-      @Param('id') id: string,
-      @Body() dto: UpdateMonitoredChatDto,
-    ) {
-      return this.monitoringSettingsService.updateChat(id, dto);
+  updateChat(@Param('id') id: string, @Body() dto: UpdateMonitoredChatDto) {
+    return this.monitoringSettingsService.updateChat(id, dto);
   }
 
   @Patch('keyword-rules/:id')
-    updateKeywordRule(
-      @Param('id') id: string,
-      @Body() dto: UpdateKeywordRuleDto,
-    ) {
-      return this.monitoringSettingsService.updateKeywordRule(id, dto);
+  updateKeywordRule(
+    @Param('id') id: string,
+    @Body() dto: UpdateKeywordRuleDto,
+  ) {
+    return this.monitoringSettingsService.updateKeywordRule(id, dto);
   }
 
   @Patch('chats/:id/active')
