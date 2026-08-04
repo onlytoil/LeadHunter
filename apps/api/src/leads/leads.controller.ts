@@ -44,4 +44,9 @@ export class LeadsController {
   updateFollowUp(@Param('id') id: string, @Body() dto: UpdateLeadFollowUpDto) {
     return this.leadsService.updateFollowUp(id, dto);
   }
+
+  @Patch(':id/complete')
+  complete(@Param('id') id: string) {
+    return this.leadsService.complete(id);
+  }
 }

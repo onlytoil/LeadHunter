@@ -11,10 +11,19 @@ import {
 import { LeadStatus } from '../../generated/prisma/client';
 import { Type } from 'class-transformer';
 
+export enum LeadFollowUpFilter {
+  TODAY = 'TODAY',
+  OVERDUE = 'OVERDUE',
+}
+
 export class GetLeadsQueryDto {
   @IsOptional()
   @IsEnum(LeadStatus)
   status?: LeadStatus;
+
+  @IsOptional()
+  @IsEnum(LeadFollowUpFilter)
+  followUp?: LeadFollowUpFilter;
 
   @IsOptional()
   @IsString()

@@ -3,7 +3,8 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type LeadStatus = "NEW" | "REVIEWED" | "CONTACTED" | "DISMISSED";
-type LeadFilter = LeadStatus | "ALL";
+type FollowUpFilter = "TODAY" | "OVERDUE";
+type LeadFilter = LeadStatus | FollowUpFilter | "ALL";
 type LeadSearchFilters = {
   chat: string;
   keyword: string;
@@ -54,6 +55,7 @@ type Lead = {
 type LeadsResponse = {
   leads: Lead[];
   counts: Record<LeadStatus, number>;
+  followUp: Record<"today" | "overdue", number>;
   pagination: {
     page: number;
     limit: number;
@@ -69,6 +71,11 @@ const emptyCounts: Record<LeadStatus, number> = {
   REVIEWED: 0,
   CONTACTED: 0,
   DISMISSED: 0,
+};
+
+const emptyFollowUpCounts = {
+  today: 0,
+  overdue: 0,
 };
 
 const initialPagination = {
@@ -128,10 +135,15 @@ function isOverdue(value: string | null) {
   return value ? value.slice(0, 10) < getLocalDateKey() : false;
 }
 
+function isLeadStatus(value: LeadFilter): value is LeadStatus {
+  return !["ALL", "TODAY", "OVERDUE"].includes(value);
+}
+
 export default function Home() {
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [counts, setCounts] = useState<Record<LeadStatus, number>>(emptyCounts);
+  const [followUpCounts, setFollowUpCounts] = useState(emptyFollowUpCounts);
   const [leadFilter, setLeadFilter] = useState<LeadFilter>("ALL");
   const [leadSearch, setLeadSearch] = useState<LeadSearchFilters>(
     emptyLeadSearchFilters,
@@ -184,15 +196,15 @@ export default function Home() {
   }, [request]);
 
   const loadLeads = useCallback(
-    async (
-      status: LeadFilter,
-      filters: LeadSearchFilters,
-      page = 1,
-    ) => {
+    async (status: LeadFilter, filters: LeadSearchFilters, page = 1) => {
       const params = new URLSearchParams();
 
-      if (status !== "ALL") {
+      if (isLeadStatus(status)) {
         params.set("status", status);
+      }
+
+      if (status === "TODAY" || status === "OVERDUE") {
+        params.set("followUp", status);
       }
 
       if (filters.chat.trim()) {
@@ -219,6 +231,7 @@ export default function Home() {
 
       setLeads(data.leads);
       setCounts(data.counts);
+      setFollowUpCounts(data.followUp);
       setPagination(data.pagination);
     },
     [request],
@@ -335,13 +348,37 @@ export default function Home() {
     }
   }
 
+  async function completeLead(id: string) {
+    try {
+      setSaving(true);
+      setError("");
+
+      await request<Lead>(`/api/leads/${id}/complete`, {
+        method: "PATCH",
+      });
+
+      await loadLeads(leadFilter, leadSearch, pagination.page);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Не удалось завершить работу с лидом.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function exportLeads() {
     const params = new URLSearchParams();
 
-    if (leadFilter !== "ALL") {
+    if (isLeadStatus(leadFilter)) {
       params.set("status", leadFilter);
     }
 
+    if (leadFilter === "TODAY" || leadFilter === "OVERDUE") {
+      params.set("followUp", leadFilter);
+    }
     if (leadSearch.chat.trim()) {
       params.set("chat", leadSearch.chat.trim());
     }
@@ -485,7 +522,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(Object.keys(statusLabels) as LeadStatus[]).map((status) => (
               <button
                 className={`rounded-xl border p-4 text-left transition ${
@@ -503,6 +540,34 @@ export default function Home() {
                 <p className="mt-2 text-3xl font-bold">{counts[status]}</p>
               </button>
             ))}
+
+            <button
+              className={`rounded-xl border p-4 text-left transition ${
+                leadFilter === "TODAY"
+                  ? "border-amber-400 bg-amber-400/10"
+                  : "border-slate-800 bg-slate-950 hover:border-slate-600"
+              }`}
+              onClick={() => void changeLeadFilter("TODAY")}
+              type="button"
+            >
+              <p className="text-sm font-medium text-amber-300">Сегодня</p>
+              <p className="mt-2 text-3xl font-bold">{followUpCounts.today}</p>
+            </button>
+
+            <button
+              className={`rounded-xl border p-4 text-left transition ${
+                leadFilter === "OVERDUE"
+                  ? "border-red-400 bg-red-400/10"
+                  : "border-slate-800 bg-slate-950 hover:border-slate-600"
+              }`}
+              onClick={() => void changeLeadFilter("OVERDUE")}
+              type="button"
+            >
+              <p className="text-sm font-medium text-red-300">Просрочено</p>
+              <p className="mt-2 text-3xl font-bold">
+                {followUpCounts.overdue}
+              </p>
+            </button>
           </div>
 
           <div className="mb-5 flex flex-wrap gap-2">
@@ -532,6 +597,30 @@ export default function Home() {
                 {statusLabels[status]}
               </button>
             ))}
+
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                leadFilter === "TODAY"
+                  ? "bg-amber-400 text-slate-950"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
+              onClick={() => void changeLeadFilter("TODAY")}
+              type="button"
+            >
+              Сегодня
+            </button>
+
+            <button
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                leadFilter === "OVERDUE"
+                  ? "bg-red-400 text-slate-950"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
+              onClick={() => void changeLeadFilter("OVERDUE")}
+              type="button"
+            >
+              Просрочено
+            </button>
           </div>
           <form
             className="mb-5 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:grid-cols-2 lg:grid-cols-5"
@@ -545,7 +634,10 @@ export default function Home() {
               placeholder="Чат или @username"
               value={leadSearch.chat}
               onChange={(event) =>
-                setLeadSearch((current) => ({ ...current, chat: event.target.value }))
+                setLeadSearch((current) => ({
+                  ...current,
+                  chat: event.target.value,
+                }))
               }
             />
             <input
@@ -679,7 +771,9 @@ export default function Home() {
                           onChange={(event) =>
                             setLeads((current) =>
                               current.map((item) =>
-                                item.id === lead.id ? { ...item, note: event.target.value } : item,
+                                item.id === lead.id
+                                  ? { ...item, note: event.target.value }
+                                  : item,
                               ),
                             )
                           }
@@ -706,7 +800,9 @@ export default function Home() {
                                   ? {
                                       ...item,
                                       followUpAt: event.target.value
-                                        ? new Date(`${event.target.value}T12:00:00.000Z`).toISOString()
+                                        ? new Date(
+                                            `${event.target.value}T12:00:00.000Z`,
+                                          ).toISOString()
                                         : null,
                                     }
                                   : item,
@@ -730,25 +826,34 @@ export default function Home() {
                           Открыть чат
                         </a>
                       )}
-
                       <button
                         className="w-full rounded-lg bg-violet-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
-                        onClick={() => void updateLeadNote(lead.id, lead.note ?? "")}
+                        onClick={() =>
+                          void updateLeadNote(lead.id, lead.note ?? "")
+                        }
                         type="button"
                       >
                         Сохранить заметку
                       </button>
-
                       <button
                         className="w-full rounded-lg bg-amber-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
-                        onClick={() => void updateLeadFollowUp(lead.id, lead.followUpAt)}
+                        onClick={() =>
+                          void updateLeadFollowUp(lead.id, lead.followUpAt)
+                        }
                         type="button"
                       >
                         Сохранить дату
                       </button>
-
+                      <button
+                        className="w-full rounded-lg bg-emerald-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={saving}
+                        onClick={() => void completeLead(lead.id)}
+                        type="button"
+                      >
+                        Сделано
+                      </button>
                       <select
                         className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-400"
                         disabled={saving}
