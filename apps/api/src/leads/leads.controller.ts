@@ -12,6 +12,7 @@ import { GetLeadsQueryDto } from './dto/get-leads-query.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { LeadsService } from './leads.service';
 import { UpdateLeadNoteDto } from './dto/update-lead-note.dto';
+import { UpdateLeadFollowUpDto } from './dto/update-lead-follow-up.dto';
 
 @Controller('leads')
 export class LeadsController {
@@ -37,5 +38,10 @@ export class LeadsController {
   @Patch(':id/note')
   updateNote(@Param('id') id: string, @Body() dto: UpdateLeadNoteDto) {
     return this.leadsService.updateNote(id, dto);
+  }
+
+  @Patch(':id/follow-up')
+  updateFollowUp(@Param('id') id: string, @Body() dto: UpdateLeadFollowUpDto) {
+    return this.leadsService.updateFollowUp(id, dto);
   }
 }

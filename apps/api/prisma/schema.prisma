@@ -42,6 +42,7 @@ model Lead {
   matchedKeywords   String[]
   status            LeadStatus @default(NEW)
   note              String?
+  followUpAt        DateTime?
   notifiedAt        DateTime?
   notificationError String?
   createdAt         DateTime   @default(now())

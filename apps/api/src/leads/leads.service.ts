@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GetLeadsQueryDto } from './dto/get-leads-query.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { UpdateLeadNoteDto } from './dto/update-lead-note.dto';
+import { UpdateLeadFollowUpDto } from './dto/update-lead-follow-up.dto';
 
 @Injectable()
 export class LeadsService {
@@ -89,6 +90,7 @@ export class LeadsService {
         'Ключевые слова',
         'Сообщение',
         'Заметка',
+        'Следующее действие',
         'Ссылка',
       ],
       ...leads.map((lead) => [
@@ -99,6 +101,7 @@ export class LeadsService {
         lead.matchedKeywords.join(', '),
         lead.message.text,
         lead.note ?? '',
+        lead.followUpAt?.toISOString() ?? '',
         lead.message.link ?? '',
       ]),
     ];
@@ -139,6 +142,35 @@ export class LeadsService {
       const lead = await this.prisma.lead.update({
         where: { id },
         data: { note: dto.note.trim() || null },
+        include: {
+          message: {
+            include: {
+              channel: true,
+            },
+          },
+        },
+      });
+
+      return this.serializeLead(lead);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Lead not found');
+      }
+
+      throw error;
+    }
+  }
+
+  async updateFollowUp(id: string, dto: UpdateLeadFollowUpDto) {
+    try {
+      const lead = await this.prisma.lead.update({
+        where: { id },
+        data: {
+          followUpAt: dto.followUpAt ? new Date(dto.followUpAt) : null,
+        },
         include: {
           message: {
             include: {
