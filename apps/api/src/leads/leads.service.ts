@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { LeadStatus, Prisma } from '../generated/prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { GetLeadsQueryDto } from './dto/get-leads-query.dto';
+import {
+  GetLeadsQueryDto,
+  LeadFollowUpFilter,
+} from './dto/get-leads-query.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { UpdateLeadNoteDto } from './dto/update-lead-note.dto';
 import { UpdateLeadFollowUpDto } from './dto/update-lead-follow-up.dto';
@@ -13,34 +16,57 @@ export class LeadsService {
 
   async getAll(query: GetLeadsQueryDto) {
     const filters = this.buildFilters(query);
-    const where = query.status ? { ...filters, status: query.status } : filters;
+    const where = this.buildWhere(query, filters);
+    const { start: todayStart, end: todayEnd } = this.getTodayRange();
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-    const [leads, total, groupedCounts] = await Promise.all([
-      this.prisma.lead.findMany({
-        where,
-        include: {
-          message: {
-            include: {
-              channel: true,
+    const [leads, total, groupedCounts, todayCount, overdueCount] =
+      await Promise.all([
+        this.prisma.lead.findMany({
+          where,
+          include: {
+            message: {
+              include: {
+                channel: true,
+              },
             },
           },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.lead.count({ where }),
-      this.prisma.lead.groupBy({
-        by: ['status'],
-        where: filters,
-        _count: {
-          _all: true,
-        },
-      }),
-    ]);
+          orderBy: [
+            { followUpAt: 'asc' },
+            { createdAt: 'desc' },
+            { id: 'desc' },
+          ],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.lead.count({ where }),
+        this.prisma.lead.groupBy({
+          by: ['status'],
+          where: filters,
+          _count: {
+            _all: true,
+          },
+        }),
+        this.prisma.lead.count({
+          where: {
+            ...filters,
+            followUpAt: {
+              gte: todayStart,
+              lte: todayEnd,
+            },
+          },
+        }),
+        this.prisma.lead.count({
+          where: {
+            ...filters,
+            followUpAt: {
+              lt: todayStart,
+            },
+          },
+        }),
+      ]);
 
     const counts: Record<LeadStatus, number> = {
       NEW: 0,
@@ -56,6 +82,10 @@ export class LeadsService {
     return {
       leads: leads.map((lead) => this.serializeLead(lead)),
       counts,
+      followUp: {
+        today: todayCount,
+        overdue: overdueCount,
+      },
       pagination: {
         page,
         limit,
@@ -67,7 +97,7 @@ export class LeadsService {
 
   async export(query: GetLeadsQueryDto) {
     const filters = this.buildFilters(query);
-    const where = query.status ? { ...filters, status: query.status } : filters;
+    const where = this.buildWhere(query, filters);
 
     const leads = await this.prisma.lead.findMany({
       where,
@@ -191,6 +221,72 @@ export class LeadsService {
 
       throw error;
     }
+  }
+
+  async complete(id: string) {
+    try {
+      const lead = await this.prisma.lead.update({
+        where: { id },
+        data: {
+          status: LeadStatus.CONTACTED,
+          followUpAt: null,
+        },
+        include: {
+          message: {
+            include: {
+              channel: true,
+            },
+          },
+        },
+      });
+
+      return this.serializeLead(lead);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Lead not found');
+      }
+
+      throw error;
+    }
+  }
+
+  private buildWhere(
+    query: GetLeadsQueryDto,
+    filters: Prisma.LeadWhereInput,
+  ): Prisma.LeadWhereInput {
+    const { start, end } = this.getTodayRange();
+
+    return {
+      ...filters,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.followUp === LeadFollowUpFilter.TODAY
+        ? {
+            followUpAt: {
+              gte: start,
+              lte: end,
+            },
+          }
+        : {}),
+      ...(query.followUp === LeadFollowUpFilter.OVERDUE
+        ? {
+            followUpAt: {
+              lt: start,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private getTodayRange(date = new Date()) {
+    const day = date.toISOString().slice(0, 10);
+
+    return {
+      start: new Date(`${day}T00:00:00.000Z`),
+      end: new Date(`${day}T23:59:59.999Z`),
+    };
   }
 
   private buildFilters(query: GetLeadsQueryDto): Prisma.LeadWhereInput {
