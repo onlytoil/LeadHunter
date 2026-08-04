@@ -101,12 +101,14 @@ export default function Home() {
       setError("");
       await request(path, options);
       await loadSettings();
+      return true;
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
           : "Не удалось сохранить изменения.",
       );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -120,7 +122,7 @@ export default function Home() {
       return;
     }
 
-    await mutate("/chats", {
+    const created = await mutate("/chats", {
       method: "POST",
       body: JSON.stringify({
         identifier: chatIdentifier.trim(),
@@ -128,8 +130,10 @@ export default function Home() {
       }),
     });
 
-    setChatIdentifier("");
-    setChatTitle("");
+    if (created) {
+      setChatIdentifier("");
+      setChatTitle("");
+    }
   }
 
   async function addRule(event: FormEvent<HTMLFormElement>) {
@@ -140,7 +144,7 @@ export default function Home() {
       return;
     }
 
-    await mutate("/keyword-rules", {
+    const created = await mutate("/keyword-rules", {
       method: "POST",
       body: JSON.stringify({
         phrase: phrase.trim(),
@@ -148,7 +152,9 @@ export default function Home() {
       }),
     });
 
-    setPhrase("");
+    if (created) {
+      setPhrase("");
+    }
   }
 
   return (
