@@ -64,6 +64,50 @@ export class LeadsService {
     };
   }
 
+  async export(query: GetLeadsQueryDto) {
+    const filters = this.buildFilters(query);
+    const where = query.status ? { ...filters, status: query.status } : filters;
+
+    const leads = await this.prisma.lead.findMany({
+      where,
+      include: {
+        message: {
+          include: {
+            channel: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const rows = [
+      [
+        'Дата сообщения',
+        'Статус',
+        'Чат',
+        'Автор',
+        'Ключевые слова',
+        'Сообщение',
+        'Заметка',
+        'Ссылка',
+      ],
+      ...leads.map((lead) => [
+        lead.message.publishedAt.toISOString(),
+        lead.status,
+        lead.message.channel.title,
+        lead.message.senderUsername ?? lead.message.senderId?.toString() ?? '',
+        lead.matchedKeywords.join(', '),
+        lead.message.text,
+        lead.note ?? '',
+        lead.message.link ?? '',
+      ]),
+    ];
+
+    return `\uFEFF${rows
+      .map((row) => row.map((value) => this.escapeCsv(value)).join(';'))
+      .join('\r\n')}`;
+  }
+
   async updateStatus(id: string, dto: UpdateLeadStatusDto) {
     try {
       const lead = await this.prisma.lead.update({
@@ -173,6 +217,10 @@ export class LeadsService {
     }
 
     return new Date(value);
+  }
+
+  private escapeCsv(value: string) {
+    return `"${value.replace(/"/g, '""')}"`;
   }
 
   private serializeLead(lead: {
