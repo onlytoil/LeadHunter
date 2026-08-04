@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { MonitoringSettingsModule } from './monitoring-settings/monitoring-settings.module';
 import { LeadsModule } from './leads/leads.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LeadsModule } from './leads/leads.module';
       envFilePath: ['../../.env', '.env'],
       validate: validateEnvironment,
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     MonitoringSettingsModule,
     LeadsModule,
