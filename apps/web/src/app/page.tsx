@@ -300,6 +300,33 @@ export default function Home() {
     }
   }
 
+  function exportLeads() {
+    const params = new URLSearchParams();
+
+    if (leadFilter !== "ALL") {
+      params.set("status", leadFilter);
+    }
+
+    if (leadSearch.chat.trim()) {
+      params.set("chat", leadSearch.chat.trim());
+    }
+
+    if (leadSearch.keyword.trim()) {
+      params.set("keyword", leadSearch.keyword.trim());
+    }
+
+    if (leadSearch.dateFrom) {
+      params.set("dateFrom", leadSearch.dateFrom);
+    }
+
+    if (leadSearch.dateTo) {
+      params.set("dateTo", leadSearch.dateTo);
+    }
+
+    const query = params.toString();
+    window.location.assign(`/api/leads/export${query ? `?${query}` : ""}`);
+  }
+
   async function mutateSettings(path: string, options: RequestInit) {
     try {
       setSaving(true);
@@ -402,14 +429,25 @@ export default function Home() {
               </p>
             </div>
 
-            <button
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300 disabled:opacity-50"
-              disabled={saving}
-              onClick={() => void loadDashboard(leadFilter, leadSearch)}
-              type="button"
-            >
-              Обновить
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-lg border border-emerald-400/50 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/10 disabled:opacity-50"
+                disabled={saving}
+                onClick={exportLeads}
+                type="button"
+              >
+                Скачать CSV
+              </button>
+
+              <button
+                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+                disabled={saving}
+                onClick={() => void loadDashboard(leadFilter, leadSearch)}
+                type="button"
+              >
+                Обновить
+              </button>
+            </div>
           </div>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
