@@ -11,10 +11,14 @@ import { CreateMonitoredChatDto } from './dto/create-monitored-chat.dto';
 import { UpdateActiveDto } from './dto/update-active.dto';
 import { UpdateKeywordRuleDto } from './dto/update-keyword-rule.dto';
 import { UpdateMonitoredChatDto } from './dto/update-monitored-chat.dto';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class MonitoringSettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramService: TelegramService,
+  ) {}
 
   async getAll() {
     const [chats, keywordRules] = await Promise.all([
@@ -40,6 +44,7 @@ export class MonitoringSettingsService {
           },
         }),
       'Monitored chat',
+      true,
     );
   }
 
@@ -65,6 +70,7 @@ export class MonitoringSettingsService {
           data: { active: dto.active },
         }),
       'Monitored chat',
+      true,
     );
   }
 
@@ -90,6 +96,7 @@ export class MonitoringSettingsService {
           },
         }),
       'Monitored chat',
+      true,
     );
   }
 
@@ -114,6 +121,7 @@ export class MonitoringSettingsService {
           where: { id },
         }),
       'Monitored chat',
+      true,
     );
   }
 
@@ -130,9 +138,16 @@ export class MonitoringSettingsService {
   private async executeMutation<T>(
     operation: () => Promise<T>,
     resourceName: string,
+    refreshTelegramMonitoring = false,
   ): Promise<T> {
     try {
-      return await operation();
+      const result = await operation();
+
+      if (refreshTelegramMonitoring) {
+        await this.telegramService.refreshMonitoredChats();
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {

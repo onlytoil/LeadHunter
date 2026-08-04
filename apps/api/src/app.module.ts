@@ -7,6 +7,7 @@ import { validateEnvironment } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { MonitoringSettingsModule } from './monitoring-settings/monitoring-settings.module';
+import { LeadsModule } from './leads/leads.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MonitoringSettingsModule } from './monitoring-settings/monitoring-setti
     }),
     PrismaModule,
     MonitoringSettingsModule,
+    LeadsModule,
     TelegramModule,
   ],
   controllers: [AppController],

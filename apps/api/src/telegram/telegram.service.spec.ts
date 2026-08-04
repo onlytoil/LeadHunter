@@ -8,7 +8,7 @@ import { ParserService } from './parser.service';
 import { TelegramService } from './telegram.service';
 
 jest.mock('telegram/events', () => ({
-  NewMessage: jest.fn().mockImplementation((options) => options),
+  NewMessage: jest.fn().mockImplementation((options: unknown) => options),
 }));
 
 describe('TelegramService', () => {

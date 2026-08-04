@@ -13,6 +13,14 @@ export class TelegramService implements OnModuleInit {
   private readonly enabled: boolean;
   private listening = false;
 
+  private messageEvent?: NewMessage;
+
+  private readonly messageHandler = (event: NewMessageEvent) => {
+    void this.handleNewMessage(event).catch((error: unknown) => {
+      this.logger.error('Failed to process a Telegram message', error);
+    });
+  };
+
   constructor(
     private readonly configService: ConfigService,
     private readonly clientService: ClientService,
@@ -29,6 +37,14 @@ export class TelegramService implements OnModuleInit {
       return;
     }
 
+    await this.refreshMonitoredChats();
+  }
+
+  async refreshMonitoredChats(): Promise<void> {
+    if (!this.enabled) {
+      return;
+    }
+
     const monitoredChats = await this.prisma.monitoredChat.findMany({
       where: { active: true },
       select: { identifier: true },
@@ -36,23 +52,28 @@ export class TelegramService implements OnModuleInit {
     });
 
     const chats = monitoredChats.map((chat) => chat.identifier);
+    const client = this.clientService.getClient();
+
+    if (this.messageEvent) {
+      client.removeEventHandler(this.messageHandler, this.messageEvent);
+      this.messageEvent = undefined;
+    }
+
+    this.listening = false;
 
     if (chats.length === 0) {
       this.logger.warn('No active Telegram chats configured');
       return;
     }
 
-    const client = this.clientService.getClient();
-
     await this.clientService.connect();
-    client.addEventHandler(
-      (event: NewMessageEvent) => {
-        void this.handleNewMessage(event).catch((error: unknown) => {
-          this.logger.error('Failed to process a Telegram message', error);
-        });
-      },
-      new NewMessage({ chats, incoming: true }),
-    );
+
+    this.messageEvent = new NewMessage({
+      chats,
+      incoming: true,
+    });
+
+    client.addEventHandler(this.messageHandler, this.messageEvent);
 
     this.listening = true;
     this.logger.log(`Monitoring ${chats.length} Telegram chat(s)`);
