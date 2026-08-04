@@ -4,6 +4,7 @@ import { LeadStatus, Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GetLeadsQueryDto } from './dto/get-leads-query.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
+import { UpdateLeadNoteDto } from './dto/update-lead-note.dto';
 
 @Injectable()
 export class LeadsService {
@@ -76,6 +77,33 @@ export class LeadsService {
           },
         },
       });
+      return this.serializeLead(lead);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Lead not found');
+      }
+
+      throw error;
+    }
+  }
+
+  async updateNote(id: string, dto: UpdateLeadNoteDto) {
+    try {
+      const lead = await this.prisma.lead.update({
+        where: { id },
+        data: { note: dto.note.trim() || null },
+        include: {
+          message: {
+            include: {
+              channel: true,
+            },
+          },
+        },
+      });
+
       return this.serializeLead(lead);
     } catch (error) {
       if (

@@ -41,6 +41,7 @@ model Lead {
   message           Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
   matchedKeywords   String[]
   status            LeadStatus @default(NEW)
+  note              String?
   notifiedAt        DateTime?
   notificationError String?
   createdAt         DateTime   @default(now())
