@@ -4,6 +4,12 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type LeadStatus = "NEW" | "REVIEWED" | "CONTACTED" | "DISMISSED";
 type LeadFilter = LeadStatus | "ALL";
+type LeadSearchFilters = {
+  chat: string;
+  keyword: string;
+  dateFrom: string;
+  dateTo: string;
+};
 
 type Chat = {
   id: string;
@@ -57,6 +63,13 @@ const emptyCounts: Record<LeadStatus, number> = {
   DISMISSED: 0,
 };
 
+const emptyLeadSearchFilters: LeadSearchFilters = {
+  chat: "",
+  keyword: "",
+  dateFrom: "",
+  dateTo: "",
+};
+
 const statusLabels: Record<LeadStatus, string> = {
   NEW: "Новые",
   REVIEWED: "Просмотрены",
@@ -91,9 +104,11 @@ function formatDate(value: string) {
 export default function Home() {
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [counts, setCounts] =
-    useState<Record<LeadStatus, number>>(emptyCounts);
+  const [counts, setCounts] = useState<Record<LeadStatus, number>>(emptyCounts);
   const [leadFilter, setLeadFilter] = useState<LeadFilter>("ALL");
+  const [leadSearch, setLeadSearch] = useState<LeadSearchFilters>(
+    emptyLeadSearchFilters,
+  );
 
   const [chatIdentifier, setChatIdentifier] = useState("");
   const [chatTitle, setChatTitle] = useState("");
@@ -141,36 +156,63 @@ export default function Home() {
   }, [request]);
 
   const loadLeads = useCallback(
-    async (status: LeadFilter = leadFilter) => {
-      const query = status === "ALL" ? "" : `?status=${status}`;
-      const data = await request<LeadsResponse>(`/api/leads${query}`);
+    async (status: LeadFilter, filters: LeadSearchFilters) => {
+      const params = new URLSearchParams();
+
+      if (status !== "ALL") {
+        params.set("status", status);
+      }
+
+      if (filters.chat.trim()) {
+        params.set("chat", filters.chat.trim());
+      }
+
+      if (filters.keyword.trim()) {
+        params.set("keyword", filters.keyword.trim());
+      }
+
+      if (filters.dateFrom) {
+        params.set("dateFrom", filters.dateFrom);
+      }
+
+      if (filters.dateTo) {
+        params.set("dateTo", filters.dateTo);
+      }
+
+      const query = params.toString();
+      const data = await request<LeadsResponse>(
+        `/api/leads${query ? `?${query}` : ""}`,
+      );
 
       setLeads(data.leads);
       setCounts(data.counts);
     },
-    [leadFilter, request],
+    [request],
   );
 
-  const loadDashboard = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const loadDashboard = useCallback(
+    async (status: LeadFilter, filters: LeadSearchFilters) => {
+      try {
+        setLoading(true);
+        setError("");
 
-      await Promise.all([loadSettings(), loadLeads()]);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Не удалось загрузить данные dashboard.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [loadLeads, loadSettings]);
+        await Promise.all([loadSettings(), loadLeads(status, filters)]);
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Не удалось загрузить данные dashboard.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadLeads, loadSettings],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadDashboard();
+      void loadDashboard("ALL", emptyLeadSearchFilters);
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -181,7 +223,7 @@ export default function Home() {
       setSaving(true);
       setError("");
       setLeadFilter(status);
-      await loadLeads(status);
+      await loadLeads(status, leadSearch);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -203,7 +245,7 @@ export default function Home() {
         body: JSON.stringify({ status }),
       });
 
-      await loadLeads();
+      await loadLeads(leadFilter, leadSearch);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -299,7 +341,7 @@ export default function Home() {
             <span>{error}</span>
             <button
               className="font-medium text-red-100 underline"
-              onClick={() => void loadDashboard()}
+              onClick={() => void loadDashboard(leadFilter, leadSearch)}
               type="button"
             >
               Повторить
@@ -320,7 +362,7 @@ export default function Home() {
             <button
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300 disabled:opacity-50"
               disabled={saving}
-              onClick={() => void loadDashboard()}
+              onClick={() => void loadDashboard(leadFilter, leadSearch)}
               type="button"
             >
               Обновить
@@ -375,7 +417,75 @@ export default function Home() {
               </button>
             ))}
           </div>
-
+          <form
+            className="mb-5 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:grid-cols-2 lg:grid-cols-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void loadLeads(leadFilter, leadSearch);
+            }}
+          >
+            <input
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-400"
+              placeholder="Чат или @username"
+              value={leadSearch.chat}
+              onChange={(event) =>
+                setLeadSearch((current) => ({ ...current, chat: event.target.value }))
+              }
+            />
+            <input
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-400"
+              placeholder="Ключевое слово"
+              value={leadSearch.keyword}
+              onChange={(event) =>
+                setLeadSearch((current) => ({
+                  ...current,
+                  keyword: event.target.value,
+                }))
+              }
+            />
+            <input
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+              type="date"
+              value={leadSearch.dateFrom}
+              onChange={(event) =>
+                setLeadSearch((current) => ({
+                  ...current,
+                  dateFrom: event.target.value,
+                }))
+              }
+            />
+            <input
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+              type="date"
+              value={leadSearch.dateTo}
+              onChange={(event) =>
+                setLeadSearch((current) => ({
+                  ...current,
+                  dateTo: event.target.value,
+                }))
+              }
+            />
+            <div className="flex gap-2">
+              <button
+                className="flex-1 rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950"
+                disabled={saving}
+                type="submit"
+              >
+                Найти
+              </button>
+              <button
+                className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-300"
+                disabled={saving}
+                onClick={() => {
+                  setLeadSearch(emptyLeadSearchFilters);
+                  void loadLeads(leadFilter, emptyLeadSearchFilters);
+                }}
+                type="button"
+              >
+                Сбросить
+              </button>
+            </div>
+          </form>
           <div className="space-y-4">
             {loading ? (
               <p className="text-sm text-slate-400">Загружаем лиды…</p>
@@ -627,7 +737,9 @@ export default function Home() {
                       >
                         {rule.type}
                       </span>
-                      <span className="break-words font-medium">{rule.phrase}</span>
+                      <span className="break-words font-medium">
+                        {rule.phrase}
+                      </span>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">

@@ -10,9 +10,12 @@ export class LeadsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAll(query: GetLeadsQueryDto) {
+    const filters = this.buildFilters(query);
+    const where = query.status ? { ...filters, status: query.status } : filters;
+
     const [leads, groupedCounts] = await Promise.all([
       this.prisma.lead.findMany({
-        where: query.status ? { status: query.status } : undefined,
+        where,
         include: {
           message: {
             include: {
@@ -24,6 +27,7 @@ export class LeadsService {
       }),
       this.prisma.lead.groupBy({
         by: ['status'],
+        where: filters,
         _count: {
           _all: true,
         },
@@ -71,6 +75,64 @@ export class LeadsService {
 
       throw error;
     }
+  }
+
+  private buildFilters(query: GetLeadsQueryDto): Prisma.LeadWhereInput {
+    const where: Prisma.LeadWhereInput = {};
+    const messageWhere: Prisma.MessageWhereInput = {};
+
+    const chat = query.chat?.trim();
+
+    if (chat) {
+      messageWhere.channel = {
+        is: {
+          OR: [
+            {
+              title: {
+                contains: chat,
+                mode: 'insensitive',
+              },
+            },
+            {
+              username: {
+                contains: chat.replace(/^@/, ''),
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    const dateFrom = query.dateFrom ? new Date(query.dateFrom) : undefined;
+    const dateTo = query.dateTo ? this.getDateTo(query.dateTo) : undefined;
+
+    if (dateFrom || dateTo) {
+      messageWhere.publishedAt = {
+        ...(dateFrom ? { gte: dateFrom } : {}),
+        ...(dateTo ? { lte: dateTo } : {}),
+      };
+    }
+
+    if (Object.keys(messageWhere).length > 0) {
+      where.message = { is: messageWhere };
+    }
+
+    const keyword = query.keyword?.trim().toLocaleLowerCase('ru-RU');
+
+    if (keyword) {
+      where.matchedKeywords = { has: keyword };
+    }
+
+    return where;
+  }
+
+  private getDateTo(value: string): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date(`${value}T23:59:59.999Z`);
+    }
+
+    return new Date(value);
   }
 
   private serializeLead(lead: {
