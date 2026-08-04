@@ -34,6 +34,7 @@ type Lead = {
   id: string;
   matchedKeywords: string[];
   status: LeadStatus;
+  note: string | null;
   createdAt: string;
   message: {
     text: string;
@@ -271,6 +272,28 @@ export default function Home() {
         requestError instanceof Error
           ? requestError.message
           : "Не удалось обновить статус лида.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateLeadNote(id: string, note: string) {
+    try {
+      setSaving(true);
+      setError("");
+
+      await request<Lead>(`/api/leads/${id}/note`, {
+        method: "PATCH",
+        body: JSON.stringify({ note }),
+      });
+
+      await loadLeads(leadFilter, leadSearch, pagination.page);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Не удалось сохранить заметку.",
       );
     } finally {
       setSaving(false);
@@ -554,6 +577,30 @@ export default function Home() {
                           </span>
                         ))}
                       </div>
+
+                      <div className="mt-4">
+                        <label
+                          className="mb-1 block text-xs font-medium text-slate-400"
+                          htmlFor={`lead-note-${lead.id}`}
+                        >
+                          Заметка
+                        </label>
+
+                        <textarea
+                          className="min-h-20 w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                          id={`lead-note-${lead.id}`}
+                          maxLength={2000}
+                          onChange={(event) =>
+                            setLeads((current) =>
+                              current.map((item) =>
+                                item.id === lead.id ? { ...item, note: event.target.value } : item,
+                              ),
+                            )
+                          }
+                          placeholder="Например: написал в Telegram, ждём ответа до пятницы"
+                          value={lead.note ?? ""}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex shrink-0 flex-wrap content-start gap-2 sm:w-36">
@@ -567,6 +614,15 @@ export default function Home() {
                           Открыть чат
                         </a>
                       )}
+
+                      <button
+                        className="w-full rounded-lg bg-violet-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={saving}
+                        onClick={() => void updateLeadNote(lead.id, lead.note ?? "")}
+                        type="button"
+                      >
+                        Сохранить заметку
+                      </button>
 
                       <select
                         className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-400"
