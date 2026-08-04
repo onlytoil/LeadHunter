@@ -35,6 +35,7 @@ type Lead = {
   matchedKeywords: string[];
   status: LeadStatus;
   note: string | null;
+  followUpAt: string | null;
   createdAt: string;
   message: {
     text: string;
@@ -113,6 +114,18 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function isOverdue(value: string | null) {
+  return value ? value.slice(0, 10) < getLocalDateKey() : false;
 }
 
 export default function Home() {
@@ -294,6 +307,28 @@ export default function Home() {
         requestError instanceof Error
           ? requestError.message
           : "Не удалось сохранить заметку.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateLeadFollowUp(id: string, followUpAt: string | null) {
+    try {
+      setSaving(true);
+      setError("");
+
+      await request<Lead>(`/api/leads/${id}/follow-up`, {
+        method: "PATCH",
+        body: JSON.stringify({ followUpAt }),
+      });
+
+      await loadLeads(leadFilter, leadSearch, pagination.page);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Не удалось сохранить дату следующего действия.",
       );
     } finally {
       setSaving(false);
@@ -589,6 +624,19 @@ export default function Home() {
                         >
                           {statusLabels[lead.status]}
                         </span>
+                        {lead.followUpAt && (
+                          <span
+                            className={`rounded px-2 py-1 text-xs font-semibold ${
+                              isOverdue(lead.followUpAt)
+                                ? "bg-red-400/15 text-red-300"
+                                : "bg-amber-400/15 text-amber-300"
+                            }`}
+                          >
+                            {isOverdue(lead.followUpAt)
+                              ? `Просрочено: ${lead.followUpAt.slice(0, 10)}`
+                              : `Вернуться: ${lead.followUpAt.slice(0, 10)}`}
+                          </span>
+                        )}
                         <span className="text-xs text-slate-500">
                           {formatDate(lead.message.publishedAt)}
                         </span>
@@ -639,6 +687,36 @@ export default function Home() {
                           value={lead.note ?? ""}
                         />
                       </div>
+
+                      <div className="mt-4">
+                        <label
+                          className="mb-1 block text-xs font-medium text-slate-400"
+                          htmlFor={`lead-follow-up-${lead.id}`}
+                        >
+                          Следующее действие
+                        </label>
+
+                        <input
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-400"
+                          id={`lead-follow-up-${lead.id}`}
+                          onChange={(event) =>
+                            setLeads((current) =>
+                              current.map((item) =>
+                                item.id === lead.id
+                                  ? {
+                                      ...item,
+                                      followUpAt: event.target.value
+                                        ? new Date(`${event.target.value}T12:00:00.000Z`).toISOString()
+                                        : null,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                          type="date"
+                          value={lead.followUpAt?.slice(0, 10) ?? ""}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex shrink-0 flex-wrap content-start gap-2 sm:w-36">
@@ -660,6 +738,15 @@ export default function Home() {
                         type="button"
                       >
                         Сохранить заметку
+                      </button>
+
+                      <button
+                        className="w-full rounded-lg bg-amber-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={saving}
+                        onClick={() => void updateLeadFollowUp(lead.id, lead.followUpAt)}
+                        type="button"
+                      >
+                        Сохранить дату
                       </button>
 
                       <select
