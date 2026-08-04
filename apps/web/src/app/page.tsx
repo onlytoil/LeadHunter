@@ -52,6 +52,12 @@ type Lead = {
 type LeadsResponse = {
   leads: Lead[];
   counts: Record<LeadStatus, number>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 const initialSettings: Settings = { chats: [], keywordRules: [] };
@@ -61,6 +67,13 @@ const emptyCounts: Record<LeadStatus, number> = {
   REVIEWED: 0,
   CONTACTED: 0,
   DISMISSED: 0,
+};
+
+const initialPagination = {
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 0,
 };
 
 const emptyLeadSearchFilters: LeadSearchFilters = {
@@ -109,6 +122,7 @@ export default function Home() {
   const [leadSearch, setLeadSearch] = useState<LeadSearchFilters>(
     emptyLeadSearchFilters,
   );
+  const [pagination, setPagination] = useState(initialPagination);
 
   const [chatIdentifier, setChatIdentifier] = useState("");
   const [chatTitle, setChatTitle] = useState("");
@@ -156,7 +170,11 @@ export default function Home() {
   }, [request]);
 
   const loadLeads = useCallback(
-    async (status: LeadFilter, filters: LeadSearchFilters) => {
+    async (
+      status: LeadFilter,
+      filters: LeadSearchFilters,
+      page = 1,
+    ) => {
       const params = new URLSearchParams();
 
       if (status !== "ALL") {
@@ -179,13 +197,15 @@ export default function Home() {
         params.set("dateTo", filters.dateTo);
       }
 
+      params.set("page", String(page));
+      params.set("limit", String(initialPagination.limit));
+
       const query = params.toString();
-      const data = await request<LeadsResponse>(
-        `/api/leads${query ? `?${query}` : ""}`,
-      );
+      const data = await request<LeadsResponse>(`/api/leads?${query}`);
 
       setLeads(data.leads);
       setCounts(data.counts);
+      setPagination(data.pagination);
     },
     [request],
   );
@@ -196,7 +216,7 @@ export default function Home() {
         setLoading(true);
         setError("");
 
-        await Promise.all([loadSettings(), loadLeads(status, filters)]);
+        await Promise.all([loadSettings(), loadLeads(status, filters, 1)]);
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -223,7 +243,7 @@ export default function Home() {
       setSaving(true);
       setError("");
       setLeadFilter(status);
-      await loadLeads(status, leadSearch);
+      await loadLeads(status, leadSearch, 1);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -245,7 +265,7 @@ export default function Home() {
         body: JSON.stringify({ status }),
       });
 
-      await loadLeads(leadFilter, leadSearch);
+      await loadLeads(leadFilter, leadSearch, pagination.page);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -421,7 +441,7 @@ export default function Home() {
             className="mb-5 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:grid-cols-2 lg:grid-cols-5"
             onSubmit={(event) => {
               event.preventDefault();
-              void loadLeads(leadFilter, leadSearch);
+              void loadLeads(leadFilter, leadSearch, 1);
             }}
           >
             <input
@@ -478,7 +498,7 @@ export default function Home() {
                 disabled={saving}
                 onClick={() => {
                   setLeadSearch(emptyLeadSearchFilters);
-                  void loadLeads(leadFilter, emptyLeadSearchFilters);
+                  void loadLeads(leadFilter, emptyLeadSearchFilters, 1);
                 }}
                 type="button"
               >
@@ -570,6 +590,38 @@ export default function Home() {
               ))
             )}
           </div>
+          {!loading && pagination.total > 0 && (
+            <div className="mt-5 flex flex-col gap-3 border-t border-slate-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-400">
+                Показано {leads.length} из {pagination.total} лидов · страница{" "}
+                {pagination.page} из {pagination.totalPages}
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={saving || pagination.page <= 1}
+                  onClick={() =>
+                    void loadLeads(leadFilter, leadSearch, pagination.page - 1)
+                  }
+                  type="button"
+                >
+                  Назад
+                </button>
+
+                <button
+                  className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={saving || pagination.page >= pagination.totalPages}
+                  onClick={() =>
+                    void loadLeads(leadFilter, leadSearch, pagination.page + 1)
+                  }
+                  type="button"
+                >
+                  Вперёд
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <h2 className="mb-4 text-2xl font-semibold">Настройки мониторинга</h2>

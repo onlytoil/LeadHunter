@@ -13,7 +13,10 @@ export class LeadsService {
     const filters = this.buildFilters(query);
     const where = query.status ? { ...filters, status: query.status } : filters;
 
-    const [leads, groupedCounts] = await Promise.all([
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const [leads, total, groupedCounts] = await Promise.all([
       this.prisma.lead.findMany({
         where,
         include: {
@@ -24,7 +27,10 @@ export class LeadsService {
           },
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
       }),
+      this.prisma.lead.count({ where }),
       this.prisma.lead.groupBy({
         by: ['status'],
         where: filters,
@@ -48,6 +54,12 @@ export class LeadsService {
     return {
       leads: leads.map((lead) => this.serializeLead(lead)),
       counts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
