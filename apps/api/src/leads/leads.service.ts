@@ -294,6 +294,50 @@ export class LeadsService {
     const messageWhere: Prisma.MessageWhereInput = {};
 
     const chat = query.chat?.trim();
+    const search = query.search?.trim();
+
+    if (search) {
+      const username = search.replace(/^@/, '');
+
+      messageWhere.OR = [
+        {
+          text: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        ...(username
+          ? [
+              {
+                senderUsername: {
+                  contains: username,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                channel: {
+                  is: {
+                    OR: [
+                      {
+                        title: {
+                          contains: search,
+                          mode: 'insensitive' as const,
+                        },
+                      },
+                      {
+                        username: {
+                          contains: username,
+                          mode: 'insensitive' as const,
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ]
+          : []),
+      ];
+    }
 
     if (chat) {
       messageWhere.channel = {

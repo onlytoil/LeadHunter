@@ -1,11 +1,12 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState, useRef } from "react";
 
 type LeadStatus = "NEW" | "REVIEWED" | "CONTACTED" | "DISMISSED";
 type FollowUpFilter = "TODAY" | "OVERDUE";
 type LeadFilter = LeadStatus | FollowUpFilter | "ALL";
 type LeadSearchFilters = {
+  search: string;
   chat: string;
   keyword: string;
   dateFrom: string;
@@ -86,6 +87,7 @@ const initialPagination = {
 };
 
 const emptyLeadSearchFilters: LeadSearchFilters = {
+  search: "",
   chat: "",
   keyword: "",
   dateFrom: "",
@@ -148,6 +150,8 @@ export default function Home() {
   const [leadSearch, setLeadSearch] = useState<LeadSearchFilters>(
     emptyLeadSearchFilters,
   );
+  const latestLeadSearch = useRef(leadSearch);
+  const didMountSearch = useRef(false);
   const [pagination, setPagination] = useState(initialPagination);
 
   const [chatIdentifier, setChatIdentifier] = useState("");
@@ -205,6 +209,10 @@ export default function Home() {
 
       if (status === "TODAY" || status === "OVERDUE") {
         params.set("followUp", status);
+      }
+
+      if (filters.search.trim()) {
+        params.set("search", filters.search.trim());
       }
 
       if (filters.chat.trim()) {
@@ -265,12 +273,28 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [loadDashboard]);
 
+  useEffect(() => {
+    latestLeadSearch.current = leadSearch;
+  }, [leadSearch]);
+
+  useEffect(() => {
+    if (!didMountSearch.current) {
+      didMountSearch.current = true;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void loadLeads(leadFilter, latestLeadSearch.current, 1);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [leadSearch.search, leadFilter, loadLeads]);
+
   async function changeLeadFilter(status: LeadFilter) {
     try {
       setSaving(true);
       setError("");
       setLeadFilter(status);
-      await loadLeads(status, leadSearch, 1);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -379,6 +403,11 @@ export default function Home() {
     if (leadFilter === "TODAY" || leadFilter === "OVERDUE") {
       params.set("followUp", leadFilter);
     }
+
+    if (leadSearch.search.trim()) {
+      params.set("search", leadSearch.search.trim());
+    }
+
     if (leadSearch.chat.trim()) {
       params.set("chat", leadSearch.chat.trim());
     }
@@ -623,12 +652,23 @@ export default function Home() {
             </button>
           </div>
           <form
-            className="mb-5 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:grid-cols-2 lg:grid-cols-5"
+            className="mb-5 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 sm:grid-cols-2 lg:grid-cols-6"
             onSubmit={(event) => {
               event.preventDefault();
               void loadLeads(leadFilter, leadSearch, 1);
             }}
           >
+            <input
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-400 sm:col-span-2"
+              placeholder="Поиск: текст, @автор или чат"
+              value={leadSearch.search}
+              onChange={(event) =>
+                setLeadSearch((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+            />
             <input
               className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-400"
               placeholder="Чат или @username"

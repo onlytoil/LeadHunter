@@ -34,6 +34,10 @@ export class GetLeadsQueryDto {
   keyword?: string;
 
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @IsDateString()
   dateFrom?: string;
 
