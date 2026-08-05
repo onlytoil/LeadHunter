@@ -817,7 +817,7 @@ export default function Home() {
                               ),
                             )
                           }
-                          placeholder="Например: написал в Telegram, ждём ответа до пятницы"
+                          placeholder=""
                           value={lead.note ?? ""}
                         />
                       </div>
@@ -827,7 +827,7 @@ export default function Home() {
                           className="mb-1 block text-xs font-medium text-slate-400"
                           htmlFor={`lead-follow-up-${lead.id}`}
                         >
-                          Следующее действие
+                          Напомнить связаться
                         </label>
 
                         <input
@@ -854,7 +854,6 @@ export default function Home() {
                         />
                       </div>
                     </div>
-
                     <div className="flex shrink-0 flex-wrap content-start gap-2 sm:w-36">
                       {lead.message.link && (
                         <a
@@ -866,8 +865,9 @@ export default function Home() {
                           Открыть чат
                         </a>
                       )}
+
                       <button
-                        className="w-full rounded-lg bg-violet-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="w-full rounded-lg border border-cyan-400/40 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
                         onClick={() =>
                           void updateLeadNote(lead.id, lead.note ?? "")
@@ -876,26 +876,29 @@ export default function Home() {
                       >
                         Сохранить заметку
                       </button>
+
                       <button
-                        className="w-full rounded-lg bg-amber-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="w-full rounded-lg border border-cyan-400/40 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
                         onClick={() =>
                           void updateLeadFollowUp(lead.id, lead.followUpAt)
                         }
                         type="button"
                       >
-                        Сохранить дату
+                        Сохранить напоминание
                       </button>
+
                       <button
-                        className="w-full rounded-lg bg-emerald-400 px-3 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="w-full rounded-lg border border-cyan-400/40 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
                         onClick={() => void completeLead(lead.id)}
                         type="button"
                       >
-                        Сделано
+                        Завершить
                       </button>
+
                       <select
-                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-400"
+                        className="w-full rounded-lg border border-cyan-400/40 bg-slate-900 px-3 py-2 text-sm font-semibold text-cyan-300 outline-none focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
                         disabled={saving}
                         onChange={(event) =>
                           void updateLeadStatus(
