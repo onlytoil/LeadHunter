@@ -23,6 +23,7 @@ describe('TelegramService', () => {
   const clientService = {
     getClient: jest.fn(() => client),
     connect: jest.fn(),
+    isConnected: jest.fn().mockReturnValue(false),
   };
 
   const prisma = {
@@ -71,6 +72,9 @@ describe('TelegramService', () => {
     expect(service.getStatus()).toEqual({
       enabled: true,
       listening: true,
+      connected: false,
+      lastError: null,
+      lastErrorAt: null,
     });
   });
 
@@ -86,6 +90,9 @@ describe('TelegramService', () => {
     expect(service.getStatus()).toEqual({
       enabled: true,
       listening: false,
+      connected: false,
+      lastError: null,
+      lastErrorAt: null,
     });
   });
 
