@@ -48,6 +48,10 @@ export class ClientService implements OnApplicationShutdown {
     }
   }
 
+  isConnected(): boolean {
+    return this.client?.connected ?? false;
+  }
+
   async onApplicationShutdown() {
     if (this.client?.connected) {
       await this.client.disconnect();

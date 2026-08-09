@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Api } from 'telegram';
 import { NewMessage, NewMessageEvent } from 'telegram/events';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientService } from './client.service';
 import { NotificationService } from './notification.service';
@@ -11,13 +12,18 @@ import { ParserService } from './parser.service';
 export class TelegramService implements OnModuleInit {
   private readonly logger = new Logger(TelegramService.name);
   private readonly enabled: boolean;
-  private listening = false;
 
+  private listening = false;
+  private lastError: string | null = null;
+  private lastErrorAt: Date | null = null;
   private messageEvent?: NewMessage;
 
   private readonly messageHandler = (event: NewMessageEvent) => {
     void this.handleNewMessage(event).catch((error: unknown) => {
-      this.logger.error('Failed to process a Telegram message', error);
+      this.logger.error(
+        'Failed to process a Telegram message',
+        this.getErrorMessage(error),
+      );
     });
   };
 
@@ -28,7 +34,7 @@ export class TelegramService implements OnModuleInit {
     private readonly notificationService: NotificationService,
     private readonly prisma: PrismaService,
   ) {
-    this.enabled = this.configService.get<boolean>('TELEGRAM_ENABLED', false);
+    this.enabled = this.configService.get('TELEGRAM_ENABLED', false);
   }
 
   async onModuleInit(): Promise<void> {
@@ -45,45 +51,73 @@ export class TelegramService implements OnModuleInit {
       return;
     }
 
-    const monitoredChats = await this.prisma.monitoredChat.findMany({
-      where: { active: true },
-      select: { identifier: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    try {
+      const monitoredChats = await this.prisma.monitoredChat.findMany({
+        where: { active: true },
+        select: { identifier: true },
+        orderBy: { createdAt: 'asc' },
+      });
 
-    const chats = monitoredChats.map((chat) => chat.identifier);
-    const client = this.clientService.getClient();
+      const chats = monitoredChats.map((chat) => chat.identifier);
 
-    if (this.messageEvent) {
-      client.removeEventHandler(this.messageHandler, this.messageEvent);
-      this.messageEvent = undefined;
+      if (chats.length === 0) {
+        this.removeMessageHandler();
+        this.listening = false;
+        this.lastError = null;
+        this.lastErrorAt = null;
+        this.logger.warn('No active Telegram chats configured');
+        return;
+      }
+
+      await this.clientService.connect();
+
+      const client = this.clientService.getClient();
+      const nextMessageEvent = new NewMessage({
+        chats,
+        incoming: true,
+      });
+
+      this.removeMessageHandler();
+      client.addEventHandler(this.messageHandler, nextMessageEvent);
+
+      this.messageEvent = nextMessageEvent;
+      this.listening = true;
+      this.lastError = null;
+      this.lastErrorAt = null;
+
+      this.logger.log(`Monitoring ${chats.length} Telegram chat(s)`);
+    } catch (error) {
+      this.listening = false;
+      this.lastError = this.getErrorMessage(error);
+      this.lastErrorAt = new Date();
+
+      this.logger.error(
+        'Telegram monitoring is temporarily unavailable. The API will remain running.',
+        this.lastError,
+      );
     }
-
-    this.listening = false;
-
-    if (chats.length === 0) {
-      this.logger.warn('No active Telegram chats configured');
-      return;
-    }
-
-    await this.clientService.connect();
-
-    this.messageEvent = new NewMessage({
-      chats,
-      incoming: true,
-    });
-
-    client.addEventHandler(this.messageHandler, this.messageEvent);
-
-    this.listening = true;
-    this.logger.log(`Monitoring ${chats.length} Telegram chat(s)`);
   }
 
   getStatus() {
     return {
       enabled: this.enabled,
       listening: this.listening,
+      connected: this.clientService.isConnected(),
+      lastError: this.lastError,
+      lastErrorAt: this.lastErrorAt,
     };
+  }
+
+  private removeMessageHandler(): void {
+    if (!this.messageEvent) {
+      return;
+    }
+
+    this.clientService
+      .getClient()
+      .removeEventHandler(this.messageHandler, this.messageEvent);
+
+    this.messageEvent = undefined;
   }
 
   private async handleNewMessage(event: NewMessageEvent): Promise<void> {
@@ -99,6 +133,7 @@ export class TelegramService implements OnModuleInit {
       message.getChat(),
       message.getSender(),
     ]);
+
     const chatInfo = this.getChatInfo(chat, chatId.toString());
     const senderInfo = this.getSenderInfo(sender);
     const match = await this.parserService.analyze(text);
@@ -166,19 +201,25 @@ export class TelegramService implements OnModuleInit {
         link: storedMessage.link,
         matchedKeywords: match.matchedKeywords,
       });
+
       await this.prisma.lead.update({
         where: { id: lead.id },
         data: { notifiedAt: new Date(), notificationError: null },
       });
     } catch (error) {
-      const notificationError =
-        error instanceof Error ? error.message : String(error);
+      const notificationError = this.getErrorMessage(error);
+
       await this.prisma.lead.update({
         where: { id: lead.id },
         data: { notificationError },
       });
+
       this.logger.error(`Lead ${lead.id} was saved but not notified`, error);
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private getChatInfo(
@@ -190,6 +231,7 @@ export class TelegramService implements OnModuleInit {
     }
 
     const username = 'username' in chat ? (chat.username ?? null) : null;
+
     if ('title' in chat) {
       return { title: chat.title, username };
     }
@@ -198,6 +240,7 @@ export class TelegramService implements OnModuleInit {
       'firstName' in chat
         ? [chat.firstName, chat.lastName].filter(Boolean).join(' ')
         : '';
+
     return { title: name || username || fallbackId, username };
   }
 

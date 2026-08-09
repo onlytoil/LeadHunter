@@ -9,6 +9,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { MonitoringSettingsModule } from './monitoring-settings/monitoring-settings.module';
 import { LeadsModule } from './leads/leads.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     LeadsModule,
     TelegramModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}
