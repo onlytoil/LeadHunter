@@ -50,8 +50,8 @@ pnpm --filter api dev
 5. Start the API and manage monitored chats plus include/exclude keyword
    rules through the `/monitoring-settings` API.
 
-The active chat list is loaded when the API starts. Restart the API after
-adding, deleting, enabling, or disabling monitored chats.
+The active chat list updates automatically after adding, deleting, enabling, or
+disabling monitored chats. Restarting the API is not required.
 
 Never commit `.env`, `api_hash`, login codes, 2FA passwords, bot tokens, or the
 Telegram session string.
@@ -87,6 +87,21 @@ pnpm db:migrate          Apply local database migrations
 pnpm telegram:login      Create a local Telegram session
 ```
 
-`GET /telegram/status` returns whether Telegram monitoring is enabled and the
-listener is active. Interactive Telegram login is intentionally not exposed by
-HTTP.
+## Dashboard and service status
+
+The web dashboard displays the current Telegram status:
+
+- `Telegram: подключён` — monitoring is active and connected;
+- `Telegram: отключён` — Telegram is enabled but has no active connection;
+- `Telegram: выключен` — the `TELEGRAM_ENABLED` setting is disabled;
+- `Telegram: ошибка` — the latest connection error is displayed.
+
+`GET /telegram/status` returns `enabled`, `listening`, `connected`,
+`lastError`, and `lastErrorAt`.
+
+Health-check endpoints:
+
+```text
+GET /health/live   API process is running
+GET /health/ready  API dependencies are ready
+```
