@@ -32,6 +32,14 @@ type Settings = {
   keywordRules: KeywordRule[];
 };
 
+type TelegramStatus = {
+  enabled: boolean;
+  listening: boolean;
+  connected: boolean;
+  lastError: string | null;
+  lastErrorAt: string | null;
+};
+
 type Lead = {
   id: string;
   matchedKeywords: string[];
@@ -66,6 +74,8 @@ type LeadsResponse = {
 };
 
 const initialSettings: Settings = { chats: [], keywordRules: [] };
+
+const initialTelegramStatus: TelegramStatus | null = null;
 
 const emptyCounts: Record<LeadStatus, number> = {
   NEW: 0,
@@ -143,6 +153,7 @@ function isLeadStatus(value: LeadFilter): value is LeadStatus {
 
 export default function Home() {
   const [settings, setSettings] = useState<Settings>(initialSettings);
+  const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(initialTelegramStatus);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [counts, setCounts] = useState<Record<LeadStatus, number>>(emptyCounts);
   const [followUpCounts, setFollowUpCounts] = useState(emptyFollowUpCounts);
@@ -199,6 +210,15 @@ export default function Home() {
     setSettings(data);
   }, [request]);
 
+  const loadTelegramStatus = useCallback(async () => {
+    try {
+      const data = await request<TelegramStatus>("/api/telegram/status");
+      setTelegramStatus(data);
+    } catch {
+      setTelegramStatus(null);
+    }
+  }, [request]);
+
   const loadLeads = useCallback(
     async (status: LeadFilter, filters: LeadSearchFilters, page = 1) => {
       const params = new URLSearchParams();
@@ -252,6 +272,7 @@ export default function Home() {
         setError("");
 
         await Promise.all([loadSettings(), loadLeads(status, filters, 1)]);
+        await loadTelegramStatus();
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -262,7 +283,7 @@ export default function Home() {
         setLoading(false);
       }
     },
-    [loadLeads, loadSettings],
+    [loadLeads, loadSettings, loadTelegramStatus],
   );
 
   useEffect(() => {
@@ -505,6 +526,34 @@ export default function Home() {
             Находи потенциальных клиентов в Telegram-чатах и управляй
             результатами в одном месте.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <span
+              className={`rounded-full px-3 py-1 font-semibold ${
+                telegramStatus?.lastError
+                  ? "bg-red-400/15 text-red-300"
+                  : telegramStatus?.connected && telegramStatus.listening
+                    ? "bg-emerald-400/15 text-emerald-300"
+                    : "bg-amber-400/15 text-amber-300"
+              }`}
+            >
+              {telegramStatus?.lastError
+                ? "Telegram: ошибка"
+                : telegramStatus?.connected && telegramStatus.listening
+                  ? "Telegram: подключён"
+                  : telegramStatus?.enabled === false
+                    ? "Telegram: выключен"
+                    : "Telegram: отключён"}
+            </span>
+
+            {telegramStatus?.lastError && (
+              <span className="text-slate-400">
+                {telegramStatus.lastErrorAt
+                  ? `${formatDate(telegramStatus.lastErrorAt)}: `
+                  : ""}
+                {telegramStatus.lastError}
+              </span>
+            )}
+          </div>
         </header>
 
         {error && (
