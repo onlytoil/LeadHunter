@@ -101,7 +101,7 @@ export function MonitoringSettings({
                     }`}
                     disabled={saving}
                     onClick={() =>
-                      void onMutateSettings(`/chats/${chat.id}`, {
+                      void onMutateSettings(`/chats/${chat.id}/active`, {
                         method: "PATCH",
                         body: JSON.stringify({ active: !chat.active }),
                       })
@@ -200,7 +200,7 @@ export function MonitoringSettings({
                     }`}
                     disabled={saving}
                     onClick={() =>
-                      void onMutateSettings(`/keyword-rules/${rule.id}`, {
+                      void onMutateSettings(`/keyword-rules/${rule.id}/active`, {
                         method: "PATCH",
                         body: JSON.stringify({ active: !rule.active }),
                       })

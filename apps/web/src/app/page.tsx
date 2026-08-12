@@ -49,6 +49,20 @@ export default function Home() {
             >
               Скачать CSV
             </button>
+
+            <button
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={dashboard.loading || dashboard.saving}
+              onClick={() => {
+                void dashboard.loadDashboard(
+                  dashboard.leadFilter,
+                  dashboard.leadSearch,
+                );
+              }}
+              type="button"
+            >
+              Обновить
+            </button>
           </div>
 
           <LeadFilters
