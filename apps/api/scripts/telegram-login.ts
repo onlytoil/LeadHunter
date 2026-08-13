@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 import path from 'node:path';
 
 import input from 'input';
-import { TelegramClient } from 'telegram';
-import { StringSession } from 'telegram/sessions';
+import { TelegramClient } from 'teleproto';
+import { StringSession } from 'teleproto/sessions';
 
 config({ path: path.resolve(process.cwd(), '../../.env') });
 

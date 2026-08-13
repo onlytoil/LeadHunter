@@ -23,6 +23,7 @@ describe('MonitoringSettingsService', () => {
 
   const telegramService = {
     refreshMonitoredChats: jest.fn(),
+    validateChat: jest.fn().mockResolvedValue(undefined),
   };
 
   const service = new MonitoringSettingsService(

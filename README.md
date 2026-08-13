@@ -105,3 +105,7 @@ Health-check endpoints:
 GET /health/live   API process is running
 GET /health/ready  API dependencies are ready
 ```
+
+### Устойчивость Telegram-мониторинга
+
+LeadHunter проверяет существование чата перед добавлением, автоматически переподключается при кратком разрыве соединения и сохраняет checkpoint последнего обработанного сообщения, чтобы восстановить пропущенные сообщения без создания дублей.

@@ -33,7 +33,9 @@ export class MonitoringSettingsService {
     return { chats, keywordRules };
   }
 
-  createChat(dto: CreateMonitoredChatDto) {
+  async createChat(dto: CreateMonitoredChatDto) {
+    await this.telegramService.validateChat(dto.identifier);
+
     return this.executeMutation(
       () =>
         this.prisma.monitoredChat.create({
