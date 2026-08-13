@@ -217,6 +217,8 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
         this.scheduleReconnect();
       }
     }, 10_000);
+
+    this.connectionCheckTimer.unref();
   }
 
   private scheduleReconnect(): void {
