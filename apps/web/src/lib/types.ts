@@ -33,8 +33,11 @@ export type TelegramStatus = {
   enabled: boolean;
   listening: boolean;
   connected: boolean;
+  reconnecting: boolean;
+  reconnectAttempt: number;
   lastError: string | null;
   lastErrorAt: string | null;
+  lastProcessedMessageAt: string | null;
 };
 
 export type Lead = {

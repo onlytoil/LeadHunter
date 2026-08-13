@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { NewMessage } from 'telegram/events';
+import { NewMessage } from 'teleproto/events';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientService } from './client.service';
@@ -7,7 +7,7 @@ import { NotificationService } from './notification.service';
 import { ParserService } from './parser.service';
 import { TelegramService } from './telegram.service';
 
-jest.mock('telegram/events', () => ({
+jest.mock('teleproto/events', () => ({
   NewMessage: jest.fn().mockImplementation((options: unknown) => options),
 }));
 
@@ -18,6 +18,9 @@ describe('TelegramService', () => {
 
   const client = {
     addEventHandler: jest.fn(),
+    removeEventHandler: jest.fn(),
+    getEntity: jest.fn(),
+    getMessages: jest.fn(),
   };
 
   const clientService = {
@@ -29,6 +32,9 @@ describe('TelegramService', () => {
   const prisma = {
     monitoredChat: {
       findMany: jest.fn(),
+    },
+    telegramMonitoringCheckpoint: {
+      findUnique: jest.fn(),
     },
   };
 
@@ -46,12 +52,15 @@ describe('TelegramService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    clientService.isConnected.mockReturnValue(false);
+    prisma.telegramMonitoringCheckpoint.findUnique.mockResolvedValue(null);
   });
 
   it('loads active monitored chats from the database', async () => {
     prisma.monitoredChat.findMany.mockResolvedValue([
-      { identifier: '@first_chat' },
-      { identifier: '-1001234567890' },
+      { id: 'chat-1', identifier: '@first_chat' },
+      { id: 'chat-2', identifier: '-1001234567890' },
     ]);
 
     const service = createService();
@@ -60,7 +69,7 @@ describe('TelegramService', () => {
 
     expect(prisma.monitoredChat.findMany).toHaveBeenCalledWith({
       where: { active: true },
-      select: { identifier: true },
+      select: { id: true, identifier: true },
       orderBy: { createdAt: 'asc' },
     });
     expect(clientService.connect).toHaveBeenCalledTimes(1);
@@ -73,8 +82,11 @@ describe('TelegramService', () => {
       enabled: true,
       listening: true,
       connected: false,
+      reconnecting: false,
+      reconnectAttempt: 0,
       lastError: null,
       lastErrorAt: null,
+      lastProcessedMessageAt: null,
     });
   });
 
@@ -91,8 +103,11 @@ describe('TelegramService', () => {
       enabled: true,
       listening: false,
       connected: false,
+      reconnecting: false,
+      reconnectAttempt: 0,
       lastError: null,
       lastErrorAt: null,
+      lastProcessedMessageAt: null,
     });
   });
 
@@ -103,5 +118,31 @@ describe('TelegramService', () => {
 
     expect(prisma.monitoredChat.findMany).not.toHaveBeenCalled();
     expect(clientService.connect).not.toHaveBeenCalled();
+  });
+
+  it('checks that a Telegram chat exists before it is added', async () => {
+    client.getEntity.mockResolvedValue({});
+
+    const service = createService();
+
+    await expect(service.validateChat('@first_chat')).resolves.toBeUndefined();
+
+    expect(clientService.connect).toHaveBeenCalledTimes(1);
+    expect(client.getEntity).toHaveBeenCalledWith('@first_chat');
+  });
+
+  it('stops listening during application shutdown', async () => {
+    prisma.monitoredChat.findMany.mockResolvedValue([
+      { id: 'chat-1', identifier: '@first_chat' },
+    ]);
+    clientService.isConnected.mockReturnValue(true);
+
+    const service = createService();
+
+    await service.onModuleInit();
+    service.onApplicationShutdown();
+
+    expect(client.removeEventHandler).toHaveBeenCalledTimes(1);
+    expect(service.getStatus().listening).toBe(false);
   });
 });
